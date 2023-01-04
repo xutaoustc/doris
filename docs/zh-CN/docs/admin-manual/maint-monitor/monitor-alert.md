@@ -306,4 +306,4 @@ jvm_heap_size_bytes{type="used"} 10113221064
 2. 点击左上角的 `New dashboard`，在点击右侧出现的 `Import dashboard`。
 3. 点击 `Upload .json File`，选择最新的模板文件。
 4. 选择数据源
-5. 点击 `Import(Overwrite)`，完成模板更新。
+5. 点击 `Import(Overwrite)`，完成模板更新。 
