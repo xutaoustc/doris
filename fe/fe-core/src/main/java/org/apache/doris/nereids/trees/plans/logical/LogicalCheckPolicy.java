@@ -42,6 +42,8 @@ import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Logical Check Policy
@@ -126,17 +128,21 @@ public class LogicalCheckPolicy<CHILD_TYPE extends Plan> extends LogicalUnary<CH
         PolicyMgr policyMgr = connectContext.getEnv().getPolicyMgr();
         UserIdentity currentUserIdentity = connectContext.getCurrentUserIdentity();
         String user = connectContext.getQualifiedUser();
+        Set<String> roles = ConnectContext.get().getEnv().getAuth().getRolesByUser(currentUserIdentity, false);
         if (currentUserIdentity.isRootUser() || currentUserIdentity.isAdminUser()) {
             return Optional.empty();
         }
-        if (!policyMgr.existPolicy(user)) {
+        if (!policyMgr.canMatchPolicy(user, roles)) {
             return Optional.empty();
         }
 
         CatalogRelation catalogRelation = (CatalogRelation) logicalRelation;
         long dbId = catalogRelation.getDatabase().getId();
         long tableId = catalogRelation.getTable().getId();
-        List<RowPolicy> policies = policyMgr.getMatchRowPolicy(dbId, tableId, currentUserIdentity);
+        List<RowPolicy> policies = roles.stream()
+                .flatMap(r -> policyMgr.getMatchRowPolicy(dbId, tableId, currentUserIdentity, r).stream())
+                .collect(Collectors.toList());
+
         if (policies.isEmpty()) {
             return Optional.empty();
         }

@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Class representing a statement rewriter. A statement rewriter performs subquery
@@ -1297,7 +1298,9 @@ public class StmtRewriter {
         if (currentUserIdentity.isRootUser() || currentUserIdentity.isAdminUser()) {
             return false;
         }
-        if (!currentEnv.getPolicyMgr().existPolicy(user)) {
+
+        Set<String> roles = ConnectContext.get().getEnv().getAuth().getRolesByUser(currentUserIdentity, false);
+        if (!currentEnv.getPolicyMgr().canMatchPolicy(user, roles)) {
             return false;
         }
         if (!(statementBase instanceof SelectStmt)) {
@@ -1324,7 +1327,8 @@ public class StmtRewriter {
                     .getDbOrAnalysisException(dbName);
             long dbId = db.getId();
             long tableId = table.getId();
-            RowPolicy matchPolicy = currentEnv.getPolicyMgr().getMatchTablePolicy(dbId, tableId, user);
+            RowPolicy matchPolicy = currentEnv.getPolicyMgr().getMatchTablePolicy(dbId, tableId, user,
+                    roles.stream().findFirst().get());
             if (matchPolicy == null) {
                 continue;
             }
