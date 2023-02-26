@@ -74,6 +74,8 @@ import org.apache.doris.mtmv.metadata.MTMVJob;
 import org.apache.doris.mtmv.metadata.MTMVTask;
 import org.apache.doris.mysql.privilege.UserPropertyInfo;
 import org.apache.doris.plugin.PluginInfo;
+import org.apache.doris.policy.ColumnPolicy;
+import org.apache.doris.policy.DropColumnPolicyLog;
 import org.apache.doris.policy.DropPolicyLog;
 import org.apache.doris.policy.Policy;
 import org.apache.doris.policy.StoragePolicy;
@@ -854,6 +856,16 @@ public class EditLog {
                     env.getPolicyMgr().replayDrop(log);
                     break;
                 }
+                case OperationType.OP_CREATE_COLUMN_POLICY: {
+                    ColumnPolicy log = (ColumnPolicy) journal.getData();
+                    env.getColumnPolicyMgr().replayCreate(log);
+                    break;
+                }
+                case OperationType.OP_DROP_COLUMN_POLICY: {
+                    DropColumnPolicyLog log = (DropColumnPolicyLog) journal.getData();
+                    env.getColumnPolicyMgr().replayDrop(log);
+                    break;
+                }
                 case OperationType.OP_ALTER_STORAGE_POLICY: {
                     StoragePolicy log = (StoragePolicy) journal.getData();
                     env.getPolicyMgr().replayStoragePolicyAlter(log);
@@ -1611,8 +1623,16 @@ public class EditLog {
         logEdit(OperationType.OP_CREATE_POLICY, policy);
     }
 
+    public void logCreateColumnPolicy(ColumnPolicy policy) {
+        logEdit(OperationType.OP_CREATE_COLUMN_POLICY, policy);
+    }
+
     public void logDropPolicy(DropPolicyLog log) {
         logEdit(OperationType.OP_DROP_POLICY, log);
+    }
+
+    public void logDropColumnPolicy(DropColumnPolicyLog log) {
+        logEdit(OperationType.OP_DROP_COLUMN_POLICY, log);
     }
 
     public void logCatalogLog(short id, CatalogLog log) {

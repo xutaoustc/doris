@@ -30,24 +30,40 @@ import org.apache.doris.analysis.SlotDescriptor;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.StatementBase;
 import org.apache.doris.analysis.StorageBackend;
+import org.apache.doris.analysis.TableName;
 import org.apache.doris.analysis.TupleDescriptor;
+import org.apache.doris.analysis.UserIdentity;
+import org.apache.doris.catalog.Column;
+import org.apache.doris.catalog.Env;
 import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.ScalarType;
+import org.apache.doris.catalog.Table;
+import org.apache.doris.catalog.TableIf;
+import org.apache.doris.catalog.external.ExternalTable;
+import org.apache.doris.cluster.ClusterNamespace;
+import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.UserException;
 import org.apache.doris.common.util.VectorizedUtil;
+import org.apache.doris.datasource.InternalCatalog;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.rewrite.mvrewrite.MVSelectFailedException;
 import org.apache.doris.thrift.TQueryOptions;
 import org.apache.doris.thrift.TRuntimeFilterMode;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+
 
 /**
  * The planner is responsible for turning parse trees into plan fragments that can be shipped off to backends for
@@ -158,6 +174,7 @@ public class OriginalPlanner extends Planner {
             InsertStmt insertStmt = (InsertStmt) statement;
             insertStmt.prepareExpressions();
         }
+        checkColumnPrivileges(singleNodePlan);
 
         // TODO chenhao16 , no used materialization work
         // compute referenced slots before calling computeMemLayout()
@@ -251,6 +268,71 @@ public class OriginalPlanner extends Planner {
                 isBlockQuery = false;
                 LOG.debug("this isn't block query");
             }
+        }
+    }
+
+    private void checkColumnPrivileges(PlanNode singleNodePlan) throws UserException {
+        if (ConnectContext.get() == null) {
+            return;
+        }
+        // 1. collect all columns from all scan nodes
+        List<ScanNode> scanNodes = Lists.newArrayList();
+        singleNodePlan.collect((PlanNode planNode) -> planNode instanceof ScanNode, scanNodes);
+        // catalog : <db.table : column>
+        Map<String, HashMultimap<TableName, String>> ctlToTableColumnMap = Maps.newHashMap();
+        for (ScanNode scanNode : scanNodes) {
+            TupleDescriptor tupleDesc = scanNode.getTupleDesc();
+            TableIf table = tupleDesc.getTable();
+            if (table == null) {
+                continue;
+            }
+            TableName tableName = getFullQualifiedTableNameFromTable(table);
+            for (SlotDescriptor slotDesc : tupleDesc.getSlots()) {
+                if (!slotDesc.isMaterialized()) {
+                    continue;
+                }
+                Column column = slotDesc.getColumn();
+                if (column == null) {
+                    continue;
+                }
+                HashMultimap<TableName, String> tableColumnMap = ctlToTableColumnMap.get(tableName.getCtl());
+                if (tableColumnMap == null) {
+                    tableColumnMap = HashMultimap.create();
+                    ctlToTableColumnMap.put(tableName.getCtl(), tableColumnMap);
+                }
+                tableColumnMap.put(tableName, column.getName());
+                LOG.debug("collect column {} in {}", column.getName(), tableName);
+            }
+        }
+        // 2. check privs
+        // TODO: only support SELECT_PRIV now
+        Env currentEnv = Env.getCurrentEnv();
+        UserIdentity currentUserIdentity = ConnectContext.get().getCurrentUserIdentity();
+        String role = ConnectContext.get().getEnv().getAuth().findRoleNameForUser(currentUserIdentity);
+
+        if (ctlToTableColumnMap.get("internal") == null) {
+            return;
+        }
+
+        for (Map.Entry<TableName, Collection<String>> entry : ctlToTableColumnMap.get("internal").asMap().entrySet()) {
+            TableName tableName = entry.getKey();
+            currentEnv.getColumnPolicyMgr().checkPolicy("default_cluster:" + tableName.getDb(),
+                    tableName.getTbl(), role, entry.getValue());
+        }
+    }
+
+    private TableName getFullQualifiedTableNameFromTable(TableIf table) throws AnalysisException {
+        if (table instanceof Table) {
+            String dbName = ClusterNamespace.getNameFromFullName(((Table) table).getQualifiedDbName());
+            if (Strings.isNullOrEmpty(dbName)) {
+                throw new AnalysisException("failed to get db name from table " + table.getName());
+            }
+            return new TableName(InternalCatalog.INTERNAL_CATALOG_NAME, dbName, table.getName());
+        } else if (table instanceof ExternalTable) {
+            ExternalTable extTable = (ExternalTable) table;
+            return new TableName(extTable.getCatalog().getName(), extTable.getDbName(), extTable.getName());
+        } else {
+            throw new AnalysisException("table " + table.getName() + " is not internal or external table instance");
         }
     }
 
