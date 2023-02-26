@@ -57,6 +57,8 @@ public enum ErrorCode {
             + " host '%s'"),
     ERR_TABLEACCESS_DENIED_ERROR(1142, new byte[]{'4', '2', '0', '0', '0'}, "%s command denied to user '%s'@'%s' for "
             + "table '%s'"),
+    ERR_COLUMNACCESS_DENIED_ERROR(1143, new byte[]{'4', '2', '0', '0', '0'}, "%s command denied to user '%s'@'%s' for"
+        + " column '%s' in table '%s'"),
     ERR_NOT_ALLOWED_COMMAND(1148, new byte[]{'4', '2', '0', '0', '0'}, "The used command is not allowed"
             + " with this MySQL version"),
     ERR_WRONG_COLUMN_NAME(1166, new byte[]{'4', '2', '0', '0', '0'}, "Incorrect column name '%s'. Column regex is '%s'"),

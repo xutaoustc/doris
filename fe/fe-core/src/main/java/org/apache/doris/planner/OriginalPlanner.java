@@ -33,6 +33,7 @@ import org.apache.doris.analysis.StatementBase;
 import org.apache.doris.analysis.StorageBackend;
 import org.apache.doris.analysis.TableName;
 import org.apache.doris.analysis.TupleDescriptor;
+import org.apache.doris.analysis.UserIdentity;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Env;
 import org.apache.doris.catalog.OlapTable;
@@ -48,7 +49,6 @@ import org.apache.doris.common.Config;
 import org.apache.doris.common.UserException;
 import org.apache.doris.common.util.VectorizedUtil;
 import org.apache.doris.datasource.InternalCatalog;
-import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.rewrite.mvrewrite.MVSelectFailedException;
 import org.apache.doris.statistics.query.StatsDelta;
@@ -66,6 +66,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -355,10 +356,20 @@ public class OriginalPlanner extends Planner {
         }
         // 2. check privs
         // TODO: only support SELECT_PRIV now
-        PrivPredicate wanted = PrivPredicate.SELECT;
-        for (Map.Entry<String, HashMultimap<TableName, String>> entry : ctlToTableColumnMap.entrySet()) {
-            Env.getCurrentEnv().getAccessManager().checkColumnsPriv(ConnectContext.get().getCurrentUserIdentity(),
-                    entry.getKey(), entry.getValue(), wanted);
+        Env currentEnv = Env.getCurrentEnv();
+        UserIdentity currentUserIdentity = ConnectContext.get().getCurrentUserIdentity();
+        Set<String> roles = ConnectContext.get().getEnv().getAuth().getRolesByUser(currentUserIdentity, false);
+
+        if (ctlToTableColumnMap.get("internal") == null) {
+            return;
+        }
+
+        for (Map.Entry<TableName, Collection<String>> entry : ctlToTableColumnMap.get("internal").asMap().entrySet()) {
+            TableName tableName = entry.getKey();
+            for (String role : roles) {
+                currentEnv.getColumnPolicyMgr().checkPolicy("default_cluster:" + tableName.getDb(),
+                        tableName.getTbl(), role, entry.getValue());
+            }
         }
     }
 
