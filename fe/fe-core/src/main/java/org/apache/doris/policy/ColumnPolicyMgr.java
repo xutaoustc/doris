@@ -163,6 +163,8 @@ public class ColumnPolicyMgr implements Writable {
 
         ColumnPolicy policy = policies.get(0);
         Set<String> expectedColumns = new HashSet<>(Arrays.asList(policy.getColumns().split(",")));
+        expectedColumns.add("__DORIS_DELETE_SIGN__");
+        expectedColumns.add("__DORIS_SEQUENCE_COL__");
 
         for (String column : columns) {
             if (! expectedColumns.contains(column)) {
