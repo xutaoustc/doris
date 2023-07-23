@@ -18,8 +18,10 @@
 package org.apache.doris.analysis;
 
 import org.apache.doris.catalog.Env;
+import org.apache.doris.cluster.ClusterNamespace;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
+import org.apache.doris.common.FeNameFormat;
 import org.apache.doris.common.UserException;
 import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.policy.PolicyTypeEnum;
@@ -27,11 +29,13 @@ import org.apache.doris.qe.ConnectContext;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Drop policy statement.
  * syntax:
  * DROP [ROW] POLICY [IF EXISTS] test_row_policy ON test_table [FOR user]
+ * DROP [ROW] POLICY [IF EXISTS] test_row_policy ON test_table [FOR ROLE role]
  **/
 @AllArgsConstructor
 public class DropPolicyStmt extends DdlStmt {
@@ -51,6 +55,9 @@ public class DropPolicyStmt extends DdlStmt {
     @Getter
     private final UserIdentity user;
 
+    @Getter
+    private String role;
+
     @Override
     public void analyze(Analyzer analyzer) throws UserException {
         super.analyze(analyzer);
@@ -62,6 +69,9 @@ public class DropPolicyStmt extends DdlStmt {
                 tableName.analyze(analyzer);
                 if (user != null) {
                     user.analyze(analyzer.getClusterName());
+                } else if (StringUtils.isNotBlank(role)) {
+                    FeNameFormat.checkRoleName(role, false /* can not be admin */, "Can not drop row policy to role");
+                    role = ClusterNamespace.getFullName(analyzer.getClusterName(), role);
                 }
         }
         // check auth
@@ -86,6 +96,8 @@ public class DropPolicyStmt extends DdlStmt {
                 sb.append(" ON ").append(tableName.toSql());
                 if (user != null) {
                     sb.append(" FOR ").append(user.getQualifiedUser());
+                } else if (StringUtils.isNotBlank(role)) {
+                    sb.append(" FOR ROLE '").append(role).append("'");
                 }
         }
         return sb.toString();
