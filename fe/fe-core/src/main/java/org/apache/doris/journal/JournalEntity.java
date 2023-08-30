@@ -113,6 +113,8 @@ import org.apache.doris.persist.TablePropertyInfo;
 import org.apache.doris.persist.TableRenameColumnInfo;
 import org.apache.doris.persist.TruncateTableInfo;
 import org.apache.doris.plugin.PluginInfo;
+import org.apache.doris.policy.ColumnPolicy;
+import org.apache.doris.policy.DropColumnPolicyLog;
 import org.apache.doris.policy.DropPolicyLog;
 import org.apache.doris.policy.Policy;
 import org.apache.doris.policy.StoragePolicy;
@@ -679,6 +681,16 @@ public class JournalEntity implements Writable {
             }
             case OperationType.OP_ALTER_STORAGE_POLICY: {
                 data = StoragePolicy.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_CREATE_COLUMN_POLICY: {
+                data = ColumnPolicy.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_DROP_COLUMN_POLICY: {
+                data = DropColumnPolicyLog.read(in);
                 isRead = true;
                 break;
             }

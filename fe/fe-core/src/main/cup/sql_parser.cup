@@ -1985,6 +1985,12 @@ create_stmt ::=
     {:
         RESULT = new CreatePolicyStmt(PolicyTypeEnum.STORAGE, ifNotExists, policyName, properties);
     :}
+    /* columh policy */
+    | KW_CREATE KW_COLUMN KW_POLICY opt_if_not_exists:ifNotExists ident:policyName KW_ON table_name:tbl KW_TO KW_ROLE STRING_LITERAL:role
+    KW_USING STRING_LITERAL:columns
+    {:
+        RESULT = new CreateColumnPolicyStmt(ifNotExists, policyName, tbl, role, columns);
+    :}
     | KW_BUILD KW_INDEX ident:indexName KW_ON table_name:tableName opt_partition_names:partitionNames
     {:
         RESULT = new AlterTableStmt(tableName, Lists.newArrayList(new BuildIndexClause(tableName, new IndexDef(indexName, partitionNames, true), false)));
@@ -2631,7 +2637,7 @@ create_routine_load_stmt ::=
          properties, type, customProperties, mergeType, comment);
     :}
     ;
-optional_on_ident ::= KW_ON ident:tableName 
+optional_on_ident ::= KW_ON ident:tableName
                     {: RESULT = tableName; :}
                   | {: RESULT = null; :};
 opt_load_property_list ::=
@@ -3059,6 +3065,10 @@ drop_stmt ::=
     | KW_DROP KW_STORAGE KW_POLICY opt_if_exists:ifExists ident:policyName
     {:
         RESULT = new DropPolicyStmt(PolicyTypeEnum.STORAGE, ifExists, policyName, null, null, null);
+    :}
+    | KW_DROP KW_COLUMN KW_POLICY opt_if_exists:ifExists ident:policyName KW_ON table_name:tbl KW_FOR KW_ROLE STRING_LITERAL:role
+    {:
+        RESULT = new DropColumnPolicyStmt(ifExists, policyName, tbl, role);
     :}
     /* statistics */
     | KW_DROP KW_STATS table_name:tbl opt_col_list:cols
@@ -3721,6 +3731,10 @@ show_stmt ::=
     | KW_SHOW KW_STORAGE KW_POLICY
     {:
         RESULT = new ShowPolicyStmt(PolicyTypeEnum.STORAGE, null, null);
+    :}
+    | KW_SHOW KW_COLUMN KW_POLICY KW_FOR KW_ROLE STRING_LITERAL:role
+    {:
+        RESULT = new ShowColumnPolicyStmt(role);
     :}
     ;
 
@@ -5276,9 +5290,9 @@ literal_values ::=
 
 args_list ::=
     {:
-        RESULT = Lists.newArrayList();     
+        RESULT = Lists.newArrayList();
     :}
-    | KW_USING LPAREN literal_values:values RPAREN 
+    | KW_USING LPAREN literal_values:values RPAREN
     {:
         RESULT = values;
     :}
@@ -6400,11 +6414,11 @@ function_call_expr ::=
   | KW_REGEXP LPAREN function_params:params RPAREN
   {: RESULT = new FunctionCallExpr("regexp", params); :}
   | function_name:fn_name LPAREN ident:id ARROW expr:e COMMA function_params:params RPAREN
-  {: 
+  {:
     List<Expr> exprs = params.exprs();
     LambdaFunctionExpr lambda = new LambdaFunctionExpr(e, id, exprs);
     exprs.add(lambda);
-    RESULT = new LambdaFunctionCallExpr(fn_name, exprs); 
+    RESULT = new LambdaFunctionCallExpr(fn_name, exprs);
   :}
   | function_name:fn_name LPAREN LPAREN ident:id COMMA ident_list:idList RPAREN ARROW expr:e COMMA function_params:params RPAREN
   {:
@@ -6557,11 +6571,11 @@ non_pred_expr ::=
     RESULT = new FunctionCallExpr("concat", exprs);
   :}
   | expr:e ARROW expr:index
-  {: 
+  {:
     ArrayList<Expr> exprs = new ArrayList<>();
     exprs.add(e);
     exprs.add(index);
-    RESULT = new FunctionCallExpr("json_extract", new FunctionParams(exprs)); 
+    RESULT = new FunctionCallExpr("json_extract", new FunctionParams(exprs));
   :}
   | cast_expr:c
   {: RESULT = c; :}
@@ -6619,9 +6633,9 @@ non_pred_expr ::=
     RESULT = new FunctionCallExpr("convert_to", new FunctionParams(exprs)); 
   :}
   | KW_CHAR LPAREN expr_list:exprs opt_using_charset:charset_name RPAREN
-  {: 
+  {:
     exprs.add(0, new StringLiteral(charset_name));
-    RESULT = new FunctionCallExpr("char", new FunctionParams(exprs)); 
+    RESULT = new FunctionCallExpr("char", new FunctionParams(exprs));
   :}
   ;
 
@@ -6809,7 +6823,7 @@ literal ::=
   {: RESULT = new NullLiteral(); :}
   | PLACEHOLDER
   {: RESULT = new PlaceHolderExpr(); parser.placeholder_expr_list.add((PlaceHolderExpr) RESULT); :}
-  | MOD 
+  | MOD
   {: RESULT = new PlaceHolderExpr(); parser.placeholder_expr_list.add((PlaceHolderExpr) RESULT); :}
   | UNMATCHED_STRING_LITERAL:l expr:e
   {:

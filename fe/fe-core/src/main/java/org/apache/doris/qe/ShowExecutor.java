@@ -38,6 +38,7 @@ import org.apache.doris.analysis.ShowCatalogRecycleBinStmt;
 import org.apache.doris.analysis.ShowCatalogStmt;
 import org.apache.doris.analysis.ShowCollationStmt;
 import org.apache.doris.analysis.ShowColumnHistStmt;
+import org.apache.doris.analysis.ShowColumnPolicyStmt;
 import org.apache.doris.analysis.ShowColumnStatsStmt;
 import org.apache.doris.analysis.ShowColumnStmt;
 import org.apache.doris.analysis.ShowCreateCatalogStmt;
@@ -407,6 +408,8 @@ public class ShowExecutor {
             handleShowCreateMaterializedView();
         } else if (stmt instanceof ShowPolicyStmt) {
             handleShowPolicy();
+        } else if (stmt instanceof ShowColumnPolicyStmt) {
+            handleShowColumnPolicy();
         } else if (stmt instanceof ShowCatalogStmt) {
             handleShowCatalogs();
         } else if (stmt instanceof ShowCreateCatalogStmt) {
@@ -2586,6 +2589,11 @@ public class ShowExecutor {
     public void handleShowPolicy() throws AnalysisException {
         ShowPolicyStmt showStmt = (ShowPolicyStmt) stmt;
         resultSet = Env.getCurrentEnv().getPolicyMgr().showPolicy(showStmt);
+    }
+
+    public void handleShowColumnPolicy() throws AnalysisException {
+        ShowColumnPolicyStmt showStmt = (ShowColumnPolicyStmt) stmt;
+        resultSet = Env.getCurrentEnv().getColumnPolicyMgr().showPolicy(showStmt);
     }
 
     public void handleShowCatalogs() throws AnalysisException {
