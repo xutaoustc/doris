@@ -249,6 +249,8 @@ public class OperationType {
     public static final short OP_CREATE_POLICY = 310;
     public static final short OP_DROP_POLICY = 311;
     public static final short OP_ALTER_STORAGE_POLICY = 312;
+    public static final short OP_CREATE_COLUMN_POLICY = 313;
+    public static final short OP_DROP_COLUMN_POLICY = 314;
 
     // catalog 320-330
     public static final short OP_CREATE_CATALOG = 320;

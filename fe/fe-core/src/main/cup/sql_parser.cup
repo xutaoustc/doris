@@ -1999,6 +1999,12 @@ create_stmt ::=
     {:
         RESULT = new CreatePolicyStmt(PolicyTypeEnum.STORAGE, ifNotExists, policyName, properties);
     :}
+    /* columh policy */
+    | KW_CREATE KW_COLUMN KW_POLICY opt_if_not_exists:ifNotExists ident:policyName KW_ON table_name:tbl KW_TO KW_ROLE STRING_LITERAL:role
+    KW_USING STRING_LITERAL:columns
+    {:
+        RESULT = new CreateColumnPolicyStmt(ifNotExists, policyName, tbl, role, columns);
+    :}
     | KW_BUILD KW_INDEX ident:indexName KW_ON table_name:tableName opt_partition_names:partitionNames
     {:
         RESULT = new AlterTableStmt(tableName, Lists.newArrayList(new BuildIndexClause(tableName, new IndexDef(indexName, partitionNames, true), false)));
@@ -3074,6 +3080,10 @@ drop_stmt ::=
     {:
         RESULT = new DropPolicyStmt(PolicyTypeEnum.STORAGE, ifExists, policyName);
     :}
+    | KW_DROP KW_COLUMN KW_POLICY opt_if_exists:ifExists ident:policyName KW_ON table_name:tbl KW_FOR KW_ROLE STRING_LITERAL:role
+    {:
+        RESULT = new DropColumnPolicyStmt(ifExists, policyName, tbl, role);
+    :}
     /* statistics */
     | KW_DROP KW_STATS table_name:tbl opt_col_list:cols
     {:
@@ -3735,6 +3745,10 @@ show_stmt ::=
     | KW_SHOW KW_STORAGE KW_POLICY
     {:
         RESULT = new ShowPolicyStmt(PolicyTypeEnum.STORAGE, null, null);
+    :}
+    | KW_SHOW KW_COLUMN KW_POLICY KW_FOR KW_ROLE STRING_LITERAL:role
+    {:
+        RESULT = new ShowColumnPolicyStmt(role);
     :}
     ;
 

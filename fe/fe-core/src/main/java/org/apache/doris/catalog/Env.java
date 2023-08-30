@@ -202,6 +202,7 @@ import org.apache.doris.persist.meta.MetaWriter;
 import org.apache.doris.planner.SingleTabletLoadRecorderMgr;
 import org.apache.doris.plugin.PluginInfo;
 import org.apache.doris.plugin.PluginMgr;
+import org.apache.doris.policy.ColumnPolicyMgr;
 import org.apache.doris.policy.PolicyMgr;
 import org.apache.doris.qe.AuditEventProcessor;
 import org.apache.doris.qe.ConnectContext;
@@ -444,6 +445,7 @@ public class Env {
     private RefreshManager refreshManager;
 
     private PolicyMgr policyMgr;
+    private ColumnPolicyMgr columnPolicyMgr;
 
     private MTMVJobManager mtmvJobManager;
 
@@ -671,6 +673,7 @@ public class Env {
         this.auditEventProcessor = new AuditEventProcessor(this.pluginMgr);
         this.refreshManager = new RefreshManager();
         this.policyMgr = new PolicyMgr();
+        this.columnPolicyMgr = new ColumnPolicyMgr();
         this.mtmvJobManager = new MTMVJobManager();
         this.extMetaCacheMgr = new ExternalMetaCacheMgr();
         this.analysisManager = new AnalysisManager();
@@ -1984,6 +1987,15 @@ public class Env {
         return checksum;
     }
 
+    public long loadColumnPolicy(DataInputStream in, long checksum) throws IOException {
+        if (Env.getCurrentEnvJournalVersion() >= FeMetaVersion.VERSION_109) {
+            columnPolicyMgr = ColumnPolicyMgr.read(in);
+        }
+        LOG.info("finished replay policy from image");
+        return checksum;
+    }
+
+
     /**
      * Load catalogs through file.
      **/
@@ -2247,6 +2259,11 @@ public class Env {
 
     public long savePolicy(CountingDataOutputStream out, long checksum) throws IOException {
         Env.getCurrentEnv().getPolicyMgr().write(out);
+        return checksum;
+    }
+
+    public long saveColumnPolicy(CountingDataOutputStream out, long checksum) throws IOException {
+        Env.getCurrentEnv().getColumnPolicyMgr().write(out);
         return checksum;
     }
 
@@ -3830,6 +3847,10 @@ public class Env {
 
     public PolicyMgr getPolicyMgr() {
         return this.policyMgr;
+    }
+
+    public ColumnPolicyMgr getColumnPolicyMgr() {
+        return this.columnPolicyMgr;
     }
 
     public void setMaster(MasterInfo info) {

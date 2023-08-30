@@ -191,6 +191,12 @@ public class MetaPersistMethod {
                 metaPersistMethod.writeMethod =
                         Env.class.getDeclaredMethod("savePolicy", CountingDataOutputStream.class, long.class);
                 break;
+            case "columnpolicy":
+                metaPersistMethod.readMethod =
+                    Env.class.getDeclaredMethod("loadColumnPolicy", DataInputStream.class, long.class);
+                metaPersistMethod.writeMethod =
+                    Env.class.getDeclaredMethod("saveColumnPolicy", CountingDataOutputStream.class, long.class);
+                break;
             case "datasource":
                 metaPersistMethod.readMethod = Env.class.getDeclaredMethod("loadCatalog", DataInputStream.class,
                         long.class);

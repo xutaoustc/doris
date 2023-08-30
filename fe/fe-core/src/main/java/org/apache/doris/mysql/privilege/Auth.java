@@ -345,6 +345,14 @@ public class Auth implements Writable {
                         currentUser, wanted, ctl, db, tbl, col));
             }
         }
+
+        for (Role role : roles) {
+            try {
+                ConnectContext.get().getEnv().getColumnPolicyMgr().checkPolicy(db, tbl, role.getRoleName(), cols);
+            } catch (AnalysisException e) {
+                throw new AuthorizationException(e.getMessage());
+            }
+        }
     }
 
     private boolean checkColPriv(String ctl, String db, String tbl,
