@@ -1056,6 +1056,12 @@ build_bitshuffle() {
     cd "${TP_SOURCE_DIR}/${BITSHUFFLE_SOURCE}"
     PREFIX="${TP_INSTALL_DIR}"
 
+    echo "Before change NEON to scal:"
+    grep -n "count = bshuf_untrans_bit_elem_NEON\|count = bshuf_untrans_bit_elem_scal" src/bitshuffle_core.c
+    sed -i 's/count = bshuf_untrans_bit_elem_NEON/count = bshuf_untrans_bit_elem_scal/g' src/bitshuffle_core.c
+    echo "After change NEON to scal:"
+    grep -n "count = bshuf_untrans_bit_elem_NEON\|count = bshuf_untrans_bit_elem_scal" src/bitshuffle_core.c
+
     # This library has significant optimizations when built with AVX2/AVX512. However,
     # we still need to support non-AVX2-capable hardware. So, we build it three times,
     # with the flag AVX2, AVX512 each and once without, and use some linker tricks to
