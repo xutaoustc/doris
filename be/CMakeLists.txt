@@ -345,6 +345,11 @@ if (USE_BTHREAD_SCANNER)
     set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -DUSE_BTHREAD_SCANNER")
 endif()
 
+if ("${CMAKE_BUILD_TARGET_ARCH}" STREQUAL "aarch64")
+    message(STATUS "Add armv8-a+crc compile option for aarch64")
+    set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -march=armv8-a+crc")
+endif()
+
 if (ENABLE_STACKTRACE)
     add_compile_options(-DENABLE_STACKTRACE)
 endif()
