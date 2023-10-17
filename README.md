@@ -4,4 +4,4 @@
 ![](pic/MR-Doris.png)
 
 ### TPCH-1T在Kunpeng芯片上的性能优化对比
-![](pic/TPCH-1T Arm运行对比结果.png)
+![](pic/TPCH-1T_Arm运行对比结果.png)
